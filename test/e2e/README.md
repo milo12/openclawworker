@@ -37,7 +37,7 @@ These tests run against actual Cloudflare infrastructure—the same environment 
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                         Deployed worker                                 │
 │                                                                         │
-│   https://moltbot-sandbox-e2e-{id}.{subdomain}.workers.dev              │
+│   https://ocworker-sandbox-e2e-{id}.{subdomain}.workers.dev              │
 │                                                                         │
 │   Protected by Cloudflare Access:                                       │
 │   - Service token (for automated tests)                                 │

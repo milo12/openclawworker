@@ -87,7 +87,7 @@ To use the admin UI at `/_admin/` for device management, you need to:
 The easiest way to protect your worker is using the built-in Cloudflare Access integration for workers.dev:
 
 1. Go to the [Workers & Pages dashboard](https://dash.cloudflare.com/?to=/:account/workers-and-pages)
-2. Select your Worker (e.g., `moltbot-sandbox`)
+2. Select your Worker (e.g., `ocworker-sandbox`)
 3. In **Settings**, under **Domains & Routes**, in the `workers.dev` row, click the meatballs menu (`...`)
 4. Click **Enable Cloudflare Access**
 5. Click **Manage Cloudflare Access** to configure who can access:
@@ -124,7 +124,7 @@ If you prefer more control, you can manually create an Access application:
 1. Go to [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/)
 2. Navigate to **Access** > **Applications**
 3. Create a new **Self-hosted** application
-4. Set the application domain to your Worker URL (e.g., `moltbot-sandbox.your-subdomain.workers.dev`)
+4. Set the application domain to your Worker URL (e.g., `ocworker-sandbox.your-subdomain.workers.dev`)
 5. Add paths to protect: `/_admin/*`, `/api/*`, `/debug/*`
 6. Configure your desired identity providers (e.g., email OTP, Google, GitHub)
 7. Copy the **Application Audience (AUD)** tag and set the secrets as shown above

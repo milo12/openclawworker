@@ -15,7 +15,7 @@ const publicRoutes = new Hono<AppEnv>();
 publicRoutes.get('/sandbox-health', (c) => {
   return c.json({
     status: 'ok',
-    service: 'moltbot-sandbox',
+    service: 'ocworker-sandbox',
     gateway_port: MOLTBOT_PORT,
   });
 });

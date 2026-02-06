@@ -47,7 +47,7 @@ E2E_CONFIG="$PROJECT_DIR/.wrangler-e2e-$WORKER_NAME.jsonc"
 echo "Generating e2e config: $E2E_CONFIG" >&2
 
 # Copy config and replace the name field (sed handles JSONC comments fine)
-sed 's/"name": "moltbot-sandbox"/"name": "'"$WORKER_NAME"'"/' "$PROJECT_DIR/wrangler.jsonc" > "$E2E_CONFIG"
+sed 's/"name": "ocworker-sandbox"/"name": "'"$WORKER_NAME"'"/' "$PROJECT_DIR/wrangler.jsonc" > "$E2E_CONFIG"
 
 # Deploy using the e2e-specific config
 echo "Deploying worker: $WORKER_NAME to account $CLOUDFLARE_ACCOUNT_ID" >&2
