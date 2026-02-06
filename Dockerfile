@@ -29,8 +29,8 @@ RUN npm install -g openclaw@2026.2.3 \
 # Templates are stored in /root/.openclaw-templates for initialization
 RUN mkdir -p /root/.openclaw \
     && mkdir -p /root/.openclaw-templates \
-    && mkdir -p /root/clawd \
-    && mkdir -p /root/clawd/skills
+    && mkdir -p /root/.openclaw/workspace \
+    && mkdir -p /root/.openclaw/workspace/skills
 
 # Copy startup script
 # Build cache bust: 2026-02-06-v27-openclaw-rename
@@ -41,10 +41,10 @@ RUN chmod +x /usr/local/bin/start-moltbot.sh
 COPY moltbot.json.template /root/.openclaw-templates/moltbot.json.template
 
 # Copy custom skills
-COPY skills/ /root/clawd/skills/
+COPY skills/ /root/.openclaw/workspace/skills/
 
 # Set working directory
-WORKDIR /root/clawd
+WORKDIR /root/.openclaw/workspace
 
 # Expose the gateway port
 EXPOSE 18789
