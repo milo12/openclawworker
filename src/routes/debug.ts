@@ -13,8 +13,8 @@ const debug = new Hono<AppEnv>();
 debug.get('/version', async (c) => {
   const sandbox = c.get('sandbox');
   try {
-    // Get moltbot version (CLI is still named clawdbot until upstream renames)
-    const versionProcess = await sandbox.startProcess('clawdbot --version');
+    // Get moltbot version
+    const versionProcess = await sandbox.startProcess('openclaw --version');
     await new Promise(resolve => setTimeout(resolve, 500));
     const versionLogs = await versionProcess.getLogs();
     const moltbotVersion = (versionLogs.stdout || versionLogs.stderr || '').trim();
@@ -30,8 +30,8 @@ debug.get('/version', async (c) => {
       node_version: nodeVersion,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return c.json({ status: 'error', message: `Failed to get version info: ${errorMessage}` }, 500);
+    console.error('[debug/version] Error:', error);
+    return c.json({ status: 'error', message: 'Failed to get version info' }, 500);
   }
 });
 
@@ -96,9 +96,16 @@ debug.get('/processes', async (c) => {
 // GET /debug/gateway-api - Probe the moltbot gateway HTTP API
 debug.get('/gateway-api', async (c) => {
   const sandbox = c.get('sandbox');
-  const path = c.req.query('path') || '/';
+  const rawPath = c.req.query('path') || '/';
   const MOLTBOT_PORT = 18789;
-  
+
+  // Validate path: must start with /, no encoded characters that could bypass checks,
+  // no path traversal, and must stay within the localhost scope
+  const path = decodeURIComponent(rawPath);
+  if (!path.startsWith('/') || path.includes('..') || path.includes('\0')) {
+    return c.json({ error: 'Invalid path' }, 400);
+  }
+
   try {
     const url = `http://localhost:${MOLTBOT_PORT}${path}`;
     const response = await sandbox.containerFetch(new Request(url), MOLTBOT_PORT);
@@ -123,11 +130,27 @@ debug.get('/gateway-api', async (c) => {
   }
 });
 
-// GET /debug/cli - Test moltbot CLI commands (CLI is still named clawdbot)
+// GET /debug/cli - Test OpenClaw CLI commands
+// Only allows a predefined set of safe subcommands to prevent command injection
+const ALLOWED_CLI_COMMANDS: Record<string, string> = {
+  'help': 'openclaw --help',
+  'version': 'openclaw --version',
+  'devices-list': 'openclaw devices list --json --url ws://localhost:18789',
+  'gateway-status': 'openclaw gateway status --url ws://localhost:18789',
+};
+
 debug.get('/cli', async (c) => {
   const sandbox = c.get('sandbox');
-  const cmd = c.req.query('cmd') || 'clawdbot --help';
-  
+  const cmdKey = c.req.query('cmd') || 'help';
+
+  const cmd = ALLOWED_CLI_COMMANDS[cmdKey];
+  if (!cmd) {
+    return c.json({
+      error: 'Command not allowed',
+      allowed: Object.keys(ALLOWED_CLI_COMMANDS),
+    }, 400);
+  }
+
   try {
     const proc = await sandbox.startProcess(cmd);
     
@@ -358,7 +381,7 @@ debug.get('/container-config', async (c) => {
   const sandbox = c.get('sandbox');
   
   try {
-    const proc = await sandbox.startProcess('cat /root/.clawdbot/clawdbot.json');
+    const proc = await sandbox.startProcess('cat /root/.openclaw/openclaw.json');
     
     let attempts = 0;
     while (attempts < 10) {

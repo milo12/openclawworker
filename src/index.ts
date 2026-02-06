@@ -116,7 +116,7 @@ const app = new Hono<AppEnv>();
 // MIDDLEWARE: Applied to ALL routes
 // =============================================================================
 
-// Middleware: Log every request
+// Middleware: Log every request and warn about dev mode in production
 app.use('*', async (c, next) => {
   const url = new URL(c.req.url);
   const redactedSearch = redactSensitiveParams(url);
@@ -124,6 +124,13 @@ app.use('*', async (c, next) => {
   console.log(`[REQ] Has ANTHROPIC_API_KEY: ${!!c.env.ANTHROPIC_API_KEY}`);
   console.log(`[REQ] DEV_MODE: ${c.env.DEV_MODE}`);
   console.log(`[REQ] DEBUG_ROUTES: ${c.env.DEBUG_ROUTES}`);
+
+  // Warn if DEV_MODE or E2E_TEST_MODE is enabled alongside CF Access config (likely production)
+  const hasAccessConfig = !!(c.env.CF_ACCESS_TEAM_DOMAIN && c.env.CF_ACCESS_AUD);
+  if (hasAccessConfig && (c.env.DEV_MODE === 'true' || c.env.E2E_TEST_MODE === 'true')) {
+    console.warn('[SECURITY] WARNING: DEV_MODE or E2E_TEST_MODE is enabled but CF Access is configured. Authentication is being bypassed in what appears to be a production deployment!');
+  }
+
   await next();
 });
 
@@ -175,12 +182,10 @@ app.use('*', async (c, next) => {
       return c.html(html, 503);
     }
 
-    // Return JSON error for API requests
+    // Return JSON error for API requests (don't expose which variables are missing)
     return c.json({
       error: 'Configuration error',
-      message: 'Required environment variables are not configured',
-      missing: missingVars,
-      hint: 'Set these using: wrangler secret put <VARIABLE_NAME>',
+      message: 'Required environment variables are not configured. Check server logs for details.',
     }, 503);
   }
 

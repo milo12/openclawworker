@@ -7,6 +7,9 @@ import { R2_MOUNT_PATH } from '../config';
 // CLI commands can take 10-15 seconds to complete due to WebSocket connection overhead
 const CLI_TIMEOUT_MS = 20000;
 
+// UUID pattern for validating requestId parameters (prevents command injection)
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * API routes
  * - /api/admin/* - Protected admin API routes (Cloudflare Access required)
@@ -31,9 +34,9 @@ adminApi.get('/devices', async (c) => {
     // Ensure moltbot is running first
     await ensureMoltbotGateway(sandbox, c.env);
 
-    // Run moltbot CLI to list devices (CLI is still named clawdbot until upstream renames)
+    // Run moltbot CLI to list devices (OpenClaw CLI until upstream renames)
     // Must specify --url to connect to the gateway running in the same container
-    const proc = await sandbox.startProcess('clawdbot devices list --json --url ws://localhost:18789');
+    const proc = await sandbox.startProcess('openclaw devices list --json --url ws://localhost:18789');
     await waitForProcess(proc, CLI_TIMEOUT_MS);
 
     const logs = await proc.getLogs();
@@ -66,8 +69,8 @@ adminApi.get('/devices', async (c) => {
       });
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return c.json({ error: errorMessage }, 500);
+    console.error('[api/devices] Error:', error);
+    return c.json({ error: 'Failed to list devices' }, 500);
   }
 });
 
@@ -80,12 +83,16 @@ adminApi.post('/devices/:requestId/approve', async (c) => {
     return c.json({ error: 'requestId is required' }, 400);
   }
 
+  if (!UUID_PATTERN.test(requestId)) {
+    return c.json({ error: 'requestId must be a valid UUID' }, 400);
+  }
+
   try {
     // Ensure moltbot is running first
     await ensureMoltbotGateway(sandbox, c.env);
 
-    // Run moltbot CLI to approve the device (CLI is still named clawdbot)
-    const proc = await sandbox.startProcess(`clawdbot devices approve ${requestId} --url ws://localhost:18789`);
+    // Run moltbot CLI to approve the device (OpenClaw CLI)
+    const proc = await sandbox.startProcess(`openclaw devices approve ${requestId} --url ws://localhost:18789`);
     await waitForProcess(proc, CLI_TIMEOUT_MS);
 
     const logs = await proc.getLogs();
@@ -116,8 +123,8 @@ adminApi.post('/devices/approve-all', async (c) => {
     // Ensure moltbot is running first
     await ensureMoltbotGateway(sandbox, c.env);
 
-    // First, get the list of pending devices (CLI is still named clawdbot)
-    const listProc = await sandbox.startProcess('clawdbot devices list --json --url ws://localhost:18789');
+    // First, get the list of pending devices (OpenClaw CLI)
+    const listProc = await sandbox.startProcess('openclaw devices list --json --url ws://localhost:18789');
     await waitForProcess(listProc, CLI_TIMEOUT_MS);
 
     const listLogs = await listProc.getLogs();
@@ -144,7 +151,12 @@ adminApi.post('/devices/approve-all', async (c) => {
 
     for (const device of pending) {
       try {
-        const approveProc = await sandbox.startProcess(`clawdbot devices approve ${device.requestId} --url ws://localhost:18789`);
+        // Validate requestId from CLI output to prevent injection
+        if (!UUID_PATTERN.test(device.requestId)) {
+          results.push({ requestId: device.requestId, success: false, error: 'Invalid requestId format' });
+          continue;
+        }
+        const approveProc = await sandbox.startProcess(`openclaw devices approve ${device.requestId} --url ws://localhost:18789`);
         await waitForProcess(approveProc, CLI_TIMEOUT_MS);
 
         const approveLogs = await approveProc.getLogs();
